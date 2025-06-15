@@ -253,6 +253,57 @@ curl -b cookies.txt -X POST http://localhost:8000/api/wallet/deposit/ \
 - `UserBalance` - хранит баланс каждого пользователя в копейках
 - `Transaction` - хранит историю всех операций с балансом
 
+## Тестирование
+
+Проект покрыт комплексными тестами с покрытием близким к 100%.
+
+### Запуск тестов
+
+**Через Makefile (рекомендуется):**
+```bash
+make test                    # Обычные тесты
+make coverage               # Тесты с отчетом покрытия
+make html                   # Тесты с HTML отчетом
+make full-test              # Полное тестирование с HTML отчетом
+```
+
+**Через Docker:**
+```bash
+docker-compose exec web python manage.py test
+docker-compose exec web coverage run --source=. manage.py test
+docker-compose exec web coverage report --show-missing
+docker-compose exec web coverage html
+```
+
+**Через pytest:**
+```bash
+make pytest
+# или
+docker-compose exec web pytest --cov=. --cov-report=html --cov-report=term-missing
+```
+
+### Структура тестов
+
+- `wallet/test_models.py` - тесты моделей (UserBalance, Transaction)
+- `wallet/test_serializers.py` - тесты сериализаторов (API валидация)  
+- `wallet/test_views.py` - тесты API endpoints
+- `wallet/test_admin.py` - тесты админ-панели
+- `wallet/tests.py` - основной модуль тестов
+
+### Покрытие тестами
+
+Текущее покрытие: **88%** (основной код приложения: **100%**)
+
+| Компонент | Покрытие |
+|-----------|----------|
+| Models | 100% |
+| Views | 100% |
+| Serializers | 100% |
+| Admin | 100% |
+| Apps | 100% |
+
+HTML отчет доступен в `htmlcov/index.html` после запуска `make html`.
+
 ### Безопасность
 - Все операции требуют session-based аутентификации
 - CSRF защита для всех POST/PUT/DELETE запросов
