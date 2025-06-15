@@ -257,6 +257,8 @@ curl -b cookies.txt -X POST http://localhost:8000/api/wallet/deposit/ \
 
 Проект покрыт комплексными тестами с покрытием близким к 100%.
 
+![image](https://github.com/user-attachments/assets/17f20882-860b-4c73-8117-a46c3e78bcb4)
+
 ### Запуск тестов
 
 **Через Makefile (рекомендуется):**
