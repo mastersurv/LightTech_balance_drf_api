@@ -2,6 +2,11 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from decimal import Decimal
 from .models import UserBalance, Transaction
+import logging
+
+
+logger = logging.getLogger('wallet')
+security_logger = logging.getLogger('wallet.security')
 
 
 class BalanceSerializer(serializers.ModelSerializer):
@@ -24,17 +29,26 @@ class DepositSerializer(serializers.Serializer):
     Сериализатор для пополнения баланса
     """
     amount_kopecks = serializers.IntegerField(
-        min_value=1, 
-        help_text="Сумма пополнения в копейках (1 рубль = 100 копеек). Примеры: 100 (1₽), 1000 (10₽), 10000 (100₽)",
-        label="Сумма в копейках",
-        style={'placeholder': '10000'}
+        min_value=1,
+        max_value=100000000,
+        help_text="Сумма пополнения в копейках (1 рубль = 100 копеек)",
+        label="Сумма в копейках"
     )
 
     def validate_amount_kopecks(self, value):
+        """
+        Валидация суммы пополнения с логированием
+        """
         if value <= 0:
-            raise serializers.ValidationError("Сумма должна быть больше нуля")
+            logger.warning(f"Попытка пополнения на отрицательную или нулевую сумму: {value}")
+            security_logger.warning(f"NEGATIVE_DEPOSIT_ATTEMPT | amount={value}")
+            raise serializers.ValidationError("Сумма пополнения должна быть положительной")
+        
         if value > 100000000:
-            raise serializers.ValidationError("Максимальная сумма пополнения: 1,000,000 рублей (100,000,000 копеек)")
+            logger.warning(f"Попытка пополнения на очень большую сумму: {value} копеек")
+            security_logger.warning(f"LARGE_DEPOSIT_ATTEMPT | amount={value}")
+            raise serializers.ValidationError("Сумма пополнения слишком велика")
+        
         return value
 
 
@@ -43,34 +57,76 @@ class TransferSerializer(serializers.Serializer):
     Сериализатор для перевода денег между пользователями
     """
     recipient_id = serializers.IntegerField(
-        help_text="ID пользователя-получателя", 
-        label="ID получателя",
-        style={'placeholder': '2'}
+        help_text="ID пользователя-получателя",
+        label="ID получателя"
     )
     amount_kopecks = serializers.IntegerField(
-        min_value=1, 
-        help_text="Сумма перевода в копейках (1 рубль = 100 копеек). Примеры: 500 (5₽), 1000 (10₽), 5000 (50₽)",
-        label="Сумма в копейках",
-        style={'placeholder': '5000'}
+        min_value=1,
+        max_value=100000000,
+        help_text="Сумма перевода в копейках (1 рубль = 100 копеек)",
+        label="Сумма в копейках"
     )
 
     def validate_recipient_id(self, value):
+        """
+        Валидация получателя с логированием
+        """
+        request = self.context.get('request')
+        
         try:
-            User.objects.get(id=value)
+            recipient = User.objects.get(id=value)
         except User.DoesNotExist:
-            raise serializers.ValidationError("Пользователь с таким ID не найден")
+            logger.warning(f"Попытка перевода несуществующему пользователю (ID: {value})")
+            security_logger.warning(f"TRANSFER_TO_NONEXISTENT | recipient_id={value}")
+            raise serializers.ValidationError("Пользователь с указанным ID не найден")
+        
+        if request and request.user.is_authenticated and recipient.id == request.user.id:
+            logger.warning(f"Попытка перевода самому себе: {request.user.username}")
+            security_logger.warning(f"SELF_TRANSFER_VALIDATION | user={request.user.username}")
+            raise serializers.ValidationError("Нельзя переводить деньги самому себе")
+        
         return value
 
     def validate_amount_kopecks(self, value):
+        """
+        Валидация суммы перевода с логированием
+        """
         if value <= 0:
-            raise serializers.ValidationError("Сумма должна быть больше нуля")
+            logger.warning(f"Попытка перевода отрицательной или нулевой суммы: {value}")
+            security_logger.warning(f"NEGATIVE_TRANSFER_ATTEMPT | amount={value}")
+            raise serializers.ValidationError("Сумма перевода должна быть положительной")
+        
+        if value > 100000000:
+            logger.warning(f"Попытка перевода очень большой суммы: {value} копеек")
+            security_logger.warning(f"LARGE_TRANSFER_ATTEMPT | amount={value}")
+            raise serializers.ValidationError("Сумма перевода слишком велика")
+        
         return value
 
-    def validate(self, attrs):
+    def validate(self, data):
+        """
+        Общая валидация с проверкой баланса
+        """
         request = self.context.get('request')
-        if request and request.user.id == attrs['recipient_id']:
-            raise serializers.ValidationError("Нельзя переводить деньги самому себе")
-        return attrs
+        if request and request.user.is_authenticated:
+            try:
+                user_balance = UserBalance.objects.get(user=request.user)
+                if user_balance.balance_kopecks < data['amount_kopecks']:
+                    logger.warning(
+                        f"Попытка перевода при недостатке средств: пользователь {request.user.username}, "
+                        f"нужно {data['amount_kopecks']}, есть {user_balance.balance_kopecks}"
+                    )
+                    security_logger.warning(
+                        f"INSUFFICIENT_FUNDS_VALIDATION | user={request.user.username} | "
+                        f"required={data['amount_kopecks']} | available={user_balance.balance_kopecks}"
+                    )
+                    raise serializers.ValidationError("Недостаточно средств на балансе")
+            except UserBalance.DoesNotExist:
+                logger.warning(f"Попытка перевода пользователем без баланса: {request.user.username}")
+                security_logger.warning(f"NO_BALANCE_TRANSFER | user={request.user.username}")
+                raise serializers.ValidationError("У вас нет баланса для перевода")
+        
+        return data
 
 
 class TransactionSerializer(serializers.ModelSerializer):
