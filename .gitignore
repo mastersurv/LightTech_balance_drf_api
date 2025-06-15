@@ -4,3 +4,7 @@ venv
 .env
 .idea
 logs/
+htmlcov/
+.coverage
+.pytest_cache/
+*.log
