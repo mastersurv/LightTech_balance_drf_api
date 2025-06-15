@@ -17,6 +17,9 @@ GET /api/wallet/balance/
 ```
 Возвращает текущий баланс авторизованного пользователя в рублях.
 
+![image](https://github.com/user-attachments/assets/9c5ba77c-9840-41a4-9c86-056eef2c9553)
+
+
 ### Пополнение баланса
 ```
 POST /api/wallet/deposit/
@@ -27,6 +30,9 @@ POST /api/wallet/deposit/
     "amount_kopecks": 10000
 }
 ```
+
+![image](https://github.com/user-attachments/assets/8c5d8a95-625a-439a-b262-4d547f6e57bf)
+
 
 ### Перевод денег
 ```
@@ -40,11 +46,20 @@ POST /api/wallet/transfer/
 }
 ```
 
+![image](https://github.com/user-attachments/assets/45e476ac-258b-4371-9818-ac826202ca06)
+
+Выполненный перевод:
+![image](https://github.com/user-attachments/assets/b49cfae3-bacb-40cf-810f-a27e105048ba)
+
+
 ### История транзакций
 ```
 GET /api/wallet/transactions/
 ```
 Возвращает историю всех транзакций пользователя.
+
+![image](https://github.com/user-attachments/assets/370ab183-78bd-488f-9583-df41d0a93aa1)
+
 
 ## Установка и запуск
 
