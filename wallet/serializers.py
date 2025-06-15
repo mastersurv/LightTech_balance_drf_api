@@ -23,11 +23,18 @@ class DepositSerializer(serializers.Serializer):
     """
     Сериализатор для пополнения баланса
     """
-    amount_kopecks = serializers.IntegerField(min_value=1, help_text="Сумма в копейках")
+    amount_kopecks = serializers.IntegerField(
+        min_value=1, 
+        help_text="Сумма пополнения в копейках (1 рубль = 100 копеек). Примеры: 100 (1₽), 1000 (10₽), 10000 (100₽)",
+        label="Сумма в копейках",
+        style={'placeholder': '10000'}
+    )
 
     def validate_amount_kopecks(self, value):
         if value <= 0:
             raise serializers.ValidationError("Сумма должна быть больше нуля")
+        if value > 100000000:
+            raise serializers.ValidationError("Максимальная сумма пополнения: 1,000,000 рублей (100,000,000 копеек)")
         return value
 
 
@@ -35,8 +42,17 @@ class TransferSerializer(serializers.Serializer):
     """
     Сериализатор для перевода денег между пользователями
     """
-    recipient_id = serializers.IntegerField(help_text="ID получателя")
-    amount_kopecks = serializers.IntegerField(min_value=1, help_text="Сумма в копейках")
+    recipient_id = serializers.IntegerField(
+        help_text="ID пользователя-получателя", 
+        label="ID получателя",
+        style={'placeholder': '2'}
+    )
+    amount_kopecks = serializers.IntegerField(
+        min_value=1, 
+        help_text="Сумма перевода в копейках (1 рубль = 100 копеек). Примеры: 500 (5₽), 1000 (10₽), 5000 (50₽)",
+        label="Сумма в копейках",
+        style={'placeholder': '5000'}
+    )
 
     def validate_recipient_id(self, value):
         try:
