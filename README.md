@@ -154,10 +154,16 @@ Content-Type: application/json
 }
 ```
 
+![image](https://github.com/user-attachments/assets/80019604-8e14-4b5e-980a-bbf5eb5eadd5)
+
+
 Для использования API с токеном:
 ```bash
 curl -H "Authorization: Token your_token_here" http://localhost:8000/api/wallet/balance/
 ```
+
+![image](https://github.com/user-attachments/assets/cdf9ed9d-4f9d-4ed8-a6e7-706c879d1875)
+
 
 Для выхода из системы (удаления токена):
 ```bash
