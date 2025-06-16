@@ -129,7 +129,43 @@ docker-compose down
 
 ## Аутентификация
 
-API поддерживает session-based аутентификацию через Django REST Framework.
+API поддерживает несколько видов аутентификации:
+
+1. **Session-based аутентификация** (Django REST Framework)
+2. **Token-based аутентификация** (Djoser)
+
+### Token аутентификация (Djoser)
+
+Для получения токена:
+```bash
+POST /api/auth/token/login/
+Content-Type: application/json
+
+{
+    "username": "your_username",
+    "password": "your_password"
+}
+```
+
+Ответ:
+```json
+{
+    "auth_token": "your_token_here"
+}
+```
+
+Для использования API с токеном:
+```bash
+curl -H "Authorization: Token your_token_here" http://localhost:8000/api/wallet/balance/
+```
+
+Для выхода из системы (удаления токена):
+```bash
+POST /api/auth/token/logout/
+Authorization: Token your_token_here
+```
+
+### Session аутентификация (Django REST Framework)
 
 ### Веб-интерфейс для входа
 ```
@@ -149,8 +185,20 @@ csrfmiddlewaretoken=<токен из cookies>
 ```
 
 ### Выход
+API поддерживает выход как через GET, так и через POST методы:
 ```
-POST /api/drf-auth/logout/
+GET /api/drf-auth/logout/   # Простой выход (исправлена ошибка HTTP 405)
+POST /api/drf-auth/logout/  # Стандартный выход
+```
+
+Оба метода возвращают JSON ответ:
+```json
+{"detail": "Вы успешно вышли из системы"}
+```
+
+Или если пользователь не был авторизован:
+```json
+{"detail": "Вы не были авторизованы"}
 ```
 
 ### Проверка статуса аутентификации

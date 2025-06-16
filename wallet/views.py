@@ -8,6 +8,12 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 import logging
+from django.contrib.auth import logout
+from django.http import JsonResponse, HttpResponseRedirect
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import resolve_url
 
 from .models import UserBalance, Transaction
 from .serializers import (
@@ -366,3 +372,47 @@ def get_transactions(request):
             {'error': 'Ошибка при получении истории транзакций'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CustomLogoutView(View):
+    """
+    Кастомный logout view, который поддерживает как GET, так и POST методы
+    Также поддерживает параметр 'next' для перенаправления после logout
+    """
+    
+    def _handle_logout(self, request):
+        """Общая логика logout"""
+        was_authenticated = request.user.is_authenticated
+        username = request.user.username if was_authenticated else 'anonymous'
+        
+        if was_authenticated:
+            logout(request)
+            logger.info(f"Пользователь {username} успешно вышел из системы")
+            message = 'Вы успешно вышли из системы'
+        else:
+            logger.debug(f"Попытка выхода неавторизованного пользователя")
+            message = 'Вы не были авторизованы'
+        
+        next_url = request.GET.get('next') or request.POST.get('next')
+        
+        if next_url and 'text/html' in request.META.get('HTTP_ACCEPT', ''):
+            try:
+                resolved_url = resolve_url(next_url)
+                return HttpResponseRedirect(resolved_url)
+            except Exception:
+                pass
+        
+        return JsonResponse({
+            'detail': message,
+            'was_authenticated': was_authenticated,
+            'next_url': next_url if next_url else None
+        })
+    
+    def get(self, request):
+        """Logout через GET запрос с поддержкой перенаправления"""
+        return self._handle_logout(request)
+    
+    def post(self, request):
+        """Logout через POST запрос с поддержкой перенаправления"""
+        return self._handle_logout(request)
